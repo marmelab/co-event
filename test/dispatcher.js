@@ -27,7 +27,7 @@ describe('dispatcher', function() {
 
         it('should emit all buffered event in order, and return when all are done', function* () {
             var listenerCall = [];
-            dispatcher.on_('my_event', function* listener(data) {
+            dispatcher.on('my_event', function* listener(data) {
                 listenerCall.push(data);
             });
 
@@ -39,7 +39,7 @@ describe('dispatcher', function() {
 
         it('should emit all buffered event in order, and return an array of event (with error if any)', function* () {
             var listenerCall = [];
-            dispatcher.on_('my_event', function* listener(data) {
+            dispatcher.on('my_event', function* listener(data) {
                 listenerCall.push(data);
                 if (!data.some) {
                     throw new Error('missing some data');
@@ -53,73 +53,73 @@ describe('dispatcher', function() {
 
     });
 
-    describe('emit_', function () {
+    describe('emit', function () {
 
         it('should return if no listener exist for emitted event', function* () {
-            yield dispatcher.emit_('some_envent', 'data');
+            yield dispatcher.emit('some_event', 'data');
         });
     });
 
-    describe('on_', function () {
+    describe('on', function () {
 
         it('should throw an error if passing a non generator function', function () {
             assert.throws(function () {
-                dispatcher.on_('my_event', function listener(data) {});
+                dispatcher.on('my_event', function listener(data) {});
             }, 'Listener must be a generator function');
 
         });
 
         it('should throw an error if passing a listener with no name', function () {
             assert.throws(function () {
-                dispatcher.on_('my_event', function* (data) {});
+                dispatcher.on('my_event', function* (data) {});
             }, 'Listener must have a name');
 
         });
 
         it('should throw an error if passing a listener with a name already taken', function () {
-            dispatcher.on_('my_event', function* listener(data) {});
+            dispatcher.on('my_event', function* listener(data) {});
             assert.throws(function () {
-                dispatcher.on_('my_event', function* listener(data) {});
+                dispatcher.on('my_event', function* listener(data) {});
             }, 'A listener with the name "listener" was already registered');
 
         });
 
         it ('should not trigger registered generator on other event', function* () {
             var myEventListenerCall = [];
-            dispatcher.on_('my_event', function* listener(data) {
+            dispatcher.on('my_event', function* listener(data) {
                 myEventListenerCall.push(data);
             });
 
-            yield dispatcher.emit_('other_event', 1);
+            yield dispatcher.emit('other_event', 1);
 
             assert.deepEqual(myEventListenerCall, []);
         });
 
         it ('should register generator to be executed each time on event', function* () {
             var myEventListenerCall = [];
-            dispatcher.on_('my_event', function* listener(data) {
+            dispatcher.on('my_event', function* listener(data) {
                 myEventListenerCall.push(data);
             });
 
-            yield dispatcher.emit_('my_event', 1);
+            yield dispatcher.emit('my_event', 1);
 
             assert.deepEqual(myEventListenerCall, [1]);
-            yield dispatcher.emit_('my_event', 2);
+            yield dispatcher.emit('my_event', 2);
             assert.deepEqual(myEventListenerCall, [1, 2]);
         });
 
         it ('should allow to register several generator on one event', function* () {
             var myEventListener1Call = [];
             var myEventListener2Call = [];
-            dispatcher.on_('my_event', function* listener1(data) {
+            dispatcher.on('my_event', function* listener1(data) {
                 myEventListener1Call.push(data);
             });
 
-            dispatcher.on_('my_event', function* listener2(data) {
+            dispatcher.on('my_event', function* listener2(data) {
                 myEventListener2Call.push(data);
             });
 
-            yield dispatcher.emit_('my_event', 1);
+            yield dispatcher.emit('my_event', 1);
 
             assert.deepEqual(myEventListener1Call, [1]);
             assert.deepEqual(myEventListener2Call, [1]);
@@ -128,15 +128,15 @@ describe('dispatcher', function() {
         it ('should return error or undefined for every registered listener', function* () {
             var myEventListener1Call = [];
             var myEventListener2Call = [];
-            dispatcher.on_('my_event', function* listener(data) {
+            dispatcher.on('my_event', function* listener(data) {
                 myEventListener1Call.push(data);
             });
 
-            dispatcher.on_('my_event', function* failingListener(data) {
+            dispatcher.on('my_event', function* failingListener(data) {
                 throw new Error('second listener failed');
             });
 
-            var result = yield dispatcher.emit_('my_event', 1);
+            var result = yield dispatcher.emit('my_event', 1);
 
             assert.deepEqual(result, { listener: undefined, failingListener: new Error('second listener failed')});
         });
