@@ -71,6 +71,8 @@ describe('koa-event', function () {
         app.use(function* (next) {
             this.dispatcher.emitLater('event', 19);
             this.body = 'OK';
+            this.status = 200;
+            yield next;
         });
 
         server = request(app);

@@ -142,4 +142,20 @@ describe('dispatcher', function() {
         });
     });
 
+    describe('once', function () {
+
+        it('should register generator to be executed only once on event', function* () {
+            var myEventListenerCall = [];
+            dispatcher.once('my_event', function* listener(data) {
+                myEventListenerCall.push(data);
+            });
+
+            yield dispatcher.emit('my_event', 1);
+
+            assert.deepEqual(myEventListenerCall, [1]);
+            yield dispatcher.emit('my_event', 2);
+            assert.deepEqual(myEventListenerCall, [1]);
+        });
+    });
+
 });
