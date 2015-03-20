@@ -39,16 +39,25 @@ describe('dispatcher', function() {
 
         it('should emit all buffered event in order, and return an array of event (with error if any)', function* () {
             var listenerCall = [];
-            dispatcher.on('my_event', function* listener(data) {
+
+            function* listener(data) {
                 listenerCall.push(data);
                 if (!data.some) {
                     throw new Error('missing some data');
                 }
-            });
+            }
+
+            dispatcher.on('my_event', listener);
 
             var results = yield dispatcher.emitBuffered();
 
-            assert.deepEqual(results, [{event: 'my_event', error: {listener: undefined}}, {event: 'my_event', error: {listener: new Error('missing some data')}}]);
+            var event1Result = {event: 'my_event', error: {}};
+
+            event1Result.error[listener] = undefined;
+            var event2Result = {event: 'my_event', error: {}};
+            event2Result.error[listener] = new Error('missing some data');
+
+            assert.deepEqual(results, [event1Result, event2Result]);
         });
 
     });
@@ -69,18 +78,12 @@ describe('dispatcher', function() {
 
         });
 
-        it('should throw an error if passing a listener with no name', function () {
+        it('should throw an error if passing the same listener twice on an event', function () {
+            function* listener(data) {};
+            dispatcher.on('my_event', listener);
             assert.throws(function () {
-                dispatcher.on('my_event', function* (data) {});
-            }, 'Listener must have a name');
-
-        });
-
-        it('should throw an error if passing a listener with a name already taken', function () {
-            dispatcher.on('my_event', function* listener(data) {});
-            assert.throws(function () {
-                dispatcher.on('my_event', function* listener(data) {});
-            }, 'A listener with the name "listener" was already registered');
+                dispatcher.on('my_event', listener);
+            }, 'This listener was already registered for the same event');
 
         });
 
@@ -128,17 +131,25 @@ describe('dispatcher', function() {
         it ('should return error or undefined for every registered listener', function* () {
             var myEventListener1Call = [];
             var myEventListener2Call = [];
-            dispatcher.on('my_event', function* listener(data) {
+            function* listener(data) {
                 myEventListener1Call.push(data);
-            });
+            }
 
-            dispatcher.on('my_event', function* failingListener(data) {
+            function* failingListener(data) {
                 throw new Error('second listener failed');
-            });
+            }
+            dispatcher.on('my_event', listener);
+
+            dispatcher.on('my_event', failingListener);
 
             var result = yield dispatcher.emit('my_event', 1);
 
-            assert.deepEqual(result, { listener: undefined, failingListener: new Error('second listener failed')});
+            var expectedResult = {};
+
+            expectedResult[listener] = undefined;
+            expectedResult[failingListener] = new Error('second listener failed');
+
+            assert.deepEqual(result, expectedResult);
         });
     });
 
