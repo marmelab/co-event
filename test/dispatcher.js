@@ -7,45 +7,8 @@ var Dispatcher = require('../lib/dispatcher');
 describe('dispatcher', function() {
     var dispatcher;
 
-    // it.only('should test', function* () {
-    //     var co = require('co');
-    //     var d = [{
-    //         event: 'my event',
-    //         listeners: {
-    //             'function* () return "ed"; }': null,
-    //             'function* () return "en"; }': function* (){ return "en"; },
-    //             'function* () return "co"; }': co(function* (){ return "en"; }).then(function () {return null;}).catch(function (e) {return e;}).then(function (e) {return e;})
-    //         }
-    //     }];
-
-    //     console.log(yield d);
-    // });
-
     beforeEach(function () {
         dispatcher = new Dispatcher();
-    });
-
-    describe('emitLater', function () {
-        it('should add event to events array', function () {
-            dispatcher.emitLater('my_event', {some: 'data'});
-
-            assert.deepEqual(dispatcher.events, [{event: 'my_event', listeners: {}}]);
-        });
-
-        it('should add one generator for each listener', function () {
-            var listener = function* () {};
-            dispatcher.on('my_event', listener);
-            dispatcher.emitLater('my_event', {some: 'data'});
-
-            var expectedEvent = {
-                event: 'my_event',
-                listeners: {}
-            };
-            expectedEvent.listeners[listener] = listener();
-
-            assert.deepEqual(dispatcher.events, [expectedEvent]);
-            assert.equal(dispatcher.events[0].listeners[listener].constructor.name, 'GeneratorFunctionPrototype');
-        });
     });
 
     describe('emit', function () {
@@ -80,8 +43,8 @@ describe('dispatcher', function() {
                 listenerCall.push(data);
             }
             dispatcher.on('my_event', listener);
-            dispatcher.emitLater('my_event', {some: 'data'});
-            dispatcher.emitLater('my_event', {someOther: 'data'});
+            dispatcher.emit('my_event', {some: 'data'});
+            dispatcher.emit('my_event', {someOther: 'data'});
 
             var report = yield dispatcher.resolveAll();
 
@@ -114,8 +77,8 @@ describe('dispatcher', function() {
             }
 
             dispatcher.on('my_event', listener);
-            dispatcher.emitLater('my_event', {some: 'data'});
-            dispatcher.emitLater('my_event', {someOther: 'data'});
+            dispatcher.emit('my_event', {some: 'data'});
+            dispatcher.emit('my_event', {someOther: 'data'});
 
             var report = yield dispatcher.resolveAll();
 
@@ -168,13 +131,20 @@ describe('dispatcher', function() {
         it('should register generator to be executed each time on event', function* () {
             var myEventListenerCall = [];
             dispatcher.on('my_event', function* listener(data) {
+                yield function (done) {
+                    setTimeout(done, 1);
+                };
                 myEventListenerCall.push(data);
             });
 
             dispatcher.emit('my_event', 1);
-
+            assert.deepEqual(myEventListenerCall, []);
+            yield dispatcher.resolveAll();
             assert.deepEqual(myEventListenerCall, [1]);
+
             dispatcher.emit('my_event', 2);
+            assert.deepEqual(myEventListenerCall, [1]);
+            yield dispatcher.resolveAll();
             assert.deepEqual(myEventListenerCall, [1, 2]);
         });
 
