@@ -18,6 +18,18 @@ describe('dispatcher', function() {
             assert.deepEqual(dispatcher.events, [{event: 'my_event', listeners: {}}]);
         });
 
+        it('should return before executing the event and wait for the next event loop', function* () {
+            var listenerCall = [];
+            dispatcher.on('my_event', function* (data) {
+                listenerCall.push(data);
+            });
+            dispatcher.emit('my_event', {some: 'data'});
+
+            assert.deepEqual(listenerCall, []);
+            yield setImmediate;
+            assert.deepEqual(listenerCall, [{some: 'data'}]);
+        });
+
         it('should add one promise for each listener', function () {
             var co = require('co');
             var listener = function* () {};
@@ -124,6 +136,7 @@ describe('dispatcher', function() {
             });
 
             dispatcher.emit('other_event', 1);
+            yield dispatcher.resolveAll();
 
             assert.deepEqual(myEventListenerCall, []);
         });
@@ -160,6 +173,7 @@ describe('dispatcher', function() {
             });
 
             dispatcher.emit('my_event', 1);
+            yield dispatcher.resolveAll();
 
             assert.deepEqual(myEventListener1Call, [1]);
             assert.deepEqual(myEventListener2Call, [1]);
@@ -175,9 +189,11 @@ describe('dispatcher', function() {
             });
 
             dispatcher.emit('my_event', 1);
+            yield dispatcher.resolveAll();
 
             assert.deepEqual(myEventListenerCall, [1]);
             dispatcher.emit('my_event', 2);
+            yield dispatcher.resolveAll();
             assert.deepEqual(myEventListenerCall, [1]);
         });
 
@@ -192,10 +208,12 @@ describe('dispatcher', function() {
             });
 
             dispatcher.emit('my_event', 1);
+            yield dispatcher.resolveAll();
 
             assert.deepEqual(myEventListener1Call, [1]);
             assert.deepEqual(myEventListener2Call, [1]);
             dispatcher.emit('my_event', 2);
+            yield dispatcher.resolveAll();
             assert.deepEqual(myEventListener1Call, [1]);
             assert.deepEqual(myEventListener2Call, [1]);
         });
