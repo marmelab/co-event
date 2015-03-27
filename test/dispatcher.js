@@ -1,6 +1,7 @@
 'use strict';
 
 var assert = require('chai').assert;
+var co = require('co');
 
 var Dispatcher = require('../lib/dispatcher');
 
@@ -8,14 +9,14 @@ describe('dispatcher', function() {
     var dispatcher;
 
     beforeEach(function () {
-        dispatcher = new Dispatcher();
+        dispatcher = new Dispatcher(true);
     });
 
     describe('emit', function () {
         it('should add event to events array', function () {
             dispatcher.emit('my_event', {some: 'data'});
 
-            assert.deepEqual(dispatcher.events, [{event: 'my_event', listeners: {}}]);
+            assert.deepEqual(dispatcher.events, [{event: 'my_event', listeners: []}]);
         });
 
         it('should return before executing the event and wait for the next event loop', function* () {
@@ -38,12 +39,26 @@ describe('dispatcher', function() {
                 event: 'my_event',
                 listeners: {}
             };
-            expectedEvent.listeners[listener] = co(listener());
+            expectedEvent.listeners = [co(listener())];
 
             dispatcher.emit('my_event', {some: 'data'});
 
             assert.deepEqual(dispatcher.events, [expectedEvent]);
-            assert.equal(dispatcher.events[0].listeners[listener].constructor.name, 'Promise');
+            assert.equal(dispatcher.events[0].listeners[0].constructor.name, 'Promise');
+        });
+
+        it('should pass all emitted arguments', function* () {
+            var listenerCall = [];
+            dispatcher.on('my_event', function* () {
+                listenerCall.push(arguments);
+            });
+
+            dispatcher.emit('my_event', 'some', 'data');
+
+            yield setImmediate;
+            let slice = Array.prototype.slice;
+
+            assert.deepEqual(slice.call(listenerCall[0]), ['some', 'data']);
         });
     });
 
@@ -62,15 +77,19 @@ describe('dispatcher', function() {
 
             var expectedEvent1 = {
                 event: 'my_event',
-                listeners: {}
+                listeners: [{
+                    listener: listener,
+                    error: undefined
+                }]
             };
 
-            expectedEvent1.listeners[listener] = undefined;
             var expectedEvent2 = {
                 event: 'my_event',
-                listeners: {}
+                listeners: [{
+                    listener: listener,
+                    error: undefined
+                }]
             };
-            expectedEvent2.listeners[listener] = undefined;
 
             assert.deepEqual(report, [expectedEvent1, expectedEvent2]);
 
@@ -96,15 +115,18 @@ describe('dispatcher', function() {
 
             var expectedEvent1 = {
                 event: 'my_event',
-                listeners: {}
+                listeners: [{
+                    listener: listener,
+                    error: undefined
+                }]
             };
-
-            expectedEvent1.listeners[listener] = undefined;
             var expectedEvent2 = {
                 event: 'my_event',
-                listeners: {}
+                listeners: [{
+                    listener: listener,
+                    error: new Error('missing some data')
+                }]
             };
-            expectedEvent2.listeners[listener] = new Error('missing some data');
 
             assert.deepEqual(report, [expectedEvent1, expectedEvent2]);
         });
@@ -116,16 +138,7 @@ describe('dispatcher', function() {
         it('should throw an error if passing a non generator function', function () {
             assert.throws(function () {
                 dispatcher.on('my_event', function listener(data) {});
-            }, 'Listener must be a generator function');
-
-        });
-
-        it('should throw an error if passing the same listener twice on an event', function () {
-            function* listener(data) {};
-            dispatcher.on('my_event', listener);
-            assert.throws(function () {
-                dispatcher.on('my_event', listener);
-            }, 'This listener was already registered for the same event');
+            }, 'listener must be a generator function');
 
         });
 
@@ -216,6 +229,39 @@ describe('dispatcher', function() {
             yield dispatcher.resolveAll();
             assert.deepEqual(myEventListener1Call, [1]);
             assert.deepEqual(myEventListener2Call, [1]);
+        });
+    });
+
+    describe('removeListener', function () {
+        it('should throw an error if listener is not a generator', function () {
+            assert.throws(function () {
+                dispatcher.removeListener('my_event', function listener(data) {});
+            }, 'listener must be a generator function');
+        });
+
+        it('should not remove specified listener it it is not on specified event', function () {
+            var listener1 = function* listener1() {};
+            var listener2 = function* listener2() {};
+
+            dispatcher.on('my_event', listener1);
+            dispatcher.on('other_event', listener2);
+
+            dispatcher.removeListener('other_event', listener1);
+            assert.deepEqual(dispatcher.listeners['my_event'], [listener1]);
+            assert.deepEqual(dispatcher.listeners['other_event'], [listener2]);
+        });
+
+        it('should remove specified listener only on specified event', function () {
+            var listener1 = function* listener1() {};
+            var listener2 = function* listener2() {};
+
+            dispatcher.on('my_event', listener1);
+            dispatcher.on('my_event', listener2);
+            dispatcher.on('other_event', listener1);
+
+            dispatcher.removeListener('my_event', listener1);
+            assert.deepEqual(dispatcher.listeners['my_event'], [listener2]);
+            assert.deepEqual(dispatcher.listeners['other_event'], [listener1]);
         });
     });
 
