@@ -195,6 +195,15 @@ describe('coEventEmitter', function() {
 
     describe('once', function () {
 
+        it('should register a remove listener after the passed listener', function* () {
+            function* listener(data) {}
+            coEventEmitter.once('my_event', listener);
+            var self = coEventEmitter;
+            assert.equal(coEventEmitter.listeners.my_event.length, 2);
+            assert.deepEqual(coEventEmitter.listeners.my_event[0], listener);
+            assert.equal(coEventEmitter.listeners.my_event[1].toString(), 'function* () {\n        self.removeListener(eventName, listener);\n    }');
+        });
+
         it('should register generator to be executed only once on event', function* () {
             var myEventListenerCall = [];
             coEventEmitter.once('my_event', function* listener(data) {

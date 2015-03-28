@@ -34,16 +34,7 @@ CoEventEmitter.prototype.emit = function (event, data) {
     var listeners = self.listeners[event] || [];
 
     var tasks = listeners.map(function (listener) {
-        var task = co(self.executeListener(listener, parameters));
-
-        if (listener.once) {
-            task.then(function (result) {
-                self.removeListener(event, listener);
-                return result;
-            });
-        }
-
-        return task;
+        return co(self.executeListener(listener, parameters));
     });
 
     self.events.push({
@@ -55,12 +46,7 @@ CoEventEmitter.prototype.emit = function (event, data) {
 };
 
 CoEventEmitter.prototype.resolveAll = function* () {
-    var results = yield this.events.map(function (event) {
-        return co(function* () {
-            return yield event;
-        });
-    });
-
+    var results = yield this.events;
     this.events = [];
 
     return results;
@@ -77,9 +63,11 @@ CoEventEmitter.prototype.on = function (eventName, listener) {
 };
 
 CoEventEmitter.prototype.once = function (eventName, listener) {
-    listener.once = true;
-
-    return this.on(eventName, listener);
+    var self = this;
+    self.on(eventName, listener);
+    self.on(eventName, function* () {
+        self.removeListener(eventName, listener);
+    });
 };
 
 CoEventEmitter.prototype.removeListener = function(eventName, listener) {
