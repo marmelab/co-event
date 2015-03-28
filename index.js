@@ -2,14 +2,13 @@
 var co = require('co');
 var slice = Array.prototype.slice;
 
-function Dispatcher(debug) {
+function CoEventEmitter(debug) {
     this.debug = debug;
     this.events = [];
     this.listeners = {};
 }
 
-
-Dispatcher.prototype.executeListener = function* (listener, parameters) {
+CoEventEmitter.prototype.executeListener = function* (listener, parameters) {
     yield setImmediate; // wait for next event loop
     var error;
 
@@ -29,7 +28,7 @@ Dispatcher.prototype.executeListener = function* (listener, parameters) {
     return error;
 };
 
-Dispatcher.prototype.emit = function (event, data) {
+CoEventEmitter.prototype.emit = function (event, data) {
     var self = this;
     var parameters = slice.call(arguments, 1);
     var listeners = self.listeners[event] || [];
@@ -55,7 +54,7 @@ Dispatcher.prototype.emit = function (event, data) {
     return self;
 };
 
-Dispatcher.prototype.resolveAll = function* () {
+CoEventEmitter.prototype.resolveAll = function* () {
     var results = yield this.events.map(function (event) {
         return co(function* () {
             return yield event;
@@ -67,7 +66,7 @@ Dispatcher.prototype.resolveAll = function* () {
     return results;
 };
 
-Dispatcher.prototype.on = function (eventName, listener) {
+CoEventEmitter.prototype.on = function (eventName, listener) {
     if (typeof listener !== 'function' || listener.constructor.name !== 'GeneratorFunction')  {
         throw new Error('listener must be a generator function');
     }
@@ -77,13 +76,13 @@ Dispatcher.prototype.on = function (eventName, listener) {
     this.listeners[eventName].push(listener);
 };
 
-Dispatcher.prototype.once = function (eventName, listener) {
+CoEventEmitter.prototype.once = function (eventName, listener) {
     listener.once = true;
 
     return this.on(eventName, listener);
 };
 
-Dispatcher.prototype.removeListener = function(eventName, listener) {
+CoEventEmitter.prototype.removeListener = function(eventName, listener) {
     if (typeof listener !== 'function' || listener.constructor.name !== 'GeneratorFunction')  {
         throw new Error('listener must be a generator function');
     }
@@ -98,4 +97,4 @@ Dispatcher.prototype.removeListener = function(eventName, listener) {
     return this;
 };
 
-module.exports = Dispatcher;
+module.exports = CoEventEmitter;
