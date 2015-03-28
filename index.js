@@ -1,6 +1,5 @@
 'use strict';
 var co = require('co');
-var uuid = require('node-uuid');
 var slice = Array.prototype.slice;
 
 function Dispatcher(debug) {

@@ -3,7 +3,7 @@
 var assert = require('chai').assert;
 var co = require('co');
 
-var Dispatcher = require('../lib/dispatcher');
+var Dispatcher = require('../');
 
 describe('dispatcher', function() {
     var dispatcher;

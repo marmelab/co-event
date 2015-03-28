@@ -9,17 +9,11 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "co": "^4.4.0",
-    "is-generator": "^1.0.0",
-    "koa": "^0.18.1",
-    "koa-is-json": "^1.0.0",
-    "node-uuid": "^1.4.3",
-    "statuses": "^1.2.1"
+    "co": "^4.4.0"
   },
   "devDependencies": {
     "chai": "^2.1.2",
     "co-mocha": "^1.1.0",
-    "mocha": "^2.2.1",
-    "superagent": "^1.1.0"
+    "mocha": "^2.2.1"
   }
 }
