@@ -131,6 +131,36 @@ describe('coEventEmitter', function() {
             assert.deepEqual(report, [expectedEvent1, expectedEvent2]);
         });
 
+        it('should wait for event emitted by registered listener too', function* () {
+            function* listener() {
+                coEventEmitter.emit('nested_event');
+            }
+            function* nestedListener() {}
+            coEventEmitter.on('my_event', listener);
+            coEventEmitter.on('nested_event', nestedListener);
+
+            coEventEmitter.emit('my_event');
+
+            var report = yield coEventEmitter.resolveAll();
+
+            var expectedEvent1 = {
+                event: 'my_event',
+                listeners: [{
+                    listener: listener,
+                    error: undefined
+                }]
+            };
+
+            var expectedEvent2 = {
+                event: 'nested_event',
+                listeners: [{
+                    listener: nestedListener,
+                    error: undefined
+                }]
+            };
+            assert.deepEqual(report, [expectedEvent1, expectedEvent2]);
+        });
+
     });
 
     describe('on', function () {
@@ -195,13 +225,12 @@ describe('coEventEmitter', function() {
 
     describe('once', function () {
 
-        it('should register a remove listener after the passed listener', function* () {
+        it('should register a remove listener on event_done event', function* () {
             function* listener(data) {}
             coEventEmitter.once('my_event', listener);
             var self = coEventEmitter;
-            assert.equal(coEventEmitter.listeners.my_event.length, 2);
             assert.deepEqual(coEventEmitter.listeners.my_event[0], listener);
-            assert.equal(coEventEmitter.listeners.my_event[1].toString(), 'function* () {\n        self.removeListener(eventName, listener);\n    }');
+            assert.equal(coEventEmitter.listeners.my_event_done[0].toString(), 'function* () {\n        self.removeListener(eventName, listener);\n    }');
         });
 
         it('should register generator to be executed only once on event', function* () {
@@ -235,7 +264,7 @@ describe('coEventEmitter', function() {
             assert.deepEqual(myEventListener1Call, [1]);
             assert.deepEqual(myEventListener2Call, [1]);
             coEventEmitter.emit('my_event', 2);
-            yield coEventEmitter.resolveAll();
+            var report = yield coEventEmitter.resolveAll();
             assert.deepEqual(myEventListener1Call, [1]);
             assert.deepEqual(myEventListener2Call, [1]);
         });
