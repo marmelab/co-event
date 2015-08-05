@@ -5,7 +5,7 @@ var co = require('co');
 
 var CoEventEmitter = require('../');
 
-describe('coEventEmitter', function() {
+describe('coEventEmitter', function () {
     var coEventEmitter;
 
     beforeEach(function () {
@@ -32,7 +32,6 @@ describe('coEventEmitter', function() {
         });
 
         it('should add one promise for each listener', function () {
-            var co = require('co');
             var listener = function* () {};
             coEventEmitter.on('my_event', listener);
             var expectedEvent = {
@@ -228,7 +227,6 @@ describe('coEventEmitter', function() {
         it('should register a remove listener on event_done event', function* () {
             function* listener(data) {}
             coEventEmitter.once('my_event', listener);
-            var self = coEventEmitter;
             assert.deepEqual(coEventEmitter.listeners.my_event[0], listener);
             assert.equal(coEventEmitter.listeners.my_event_done[0].toString(), 'function* () {\n        self.removeListener(eventName, listener);\n    }');
         });
@@ -264,7 +262,7 @@ describe('coEventEmitter', function() {
             assert.deepEqual(myEventListener1Call, [1]);
             assert.deepEqual(myEventListener2Call, [1]);
             coEventEmitter.emit('my_event', 2);
-            var report = yield coEventEmitter.resolveAll();
+            yield coEventEmitter.resolveAll();
             assert.deepEqual(myEventListener1Call, [1]);
             assert.deepEqual(myEventListener2Call, [1]);
         });

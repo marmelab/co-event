@@ -48,17 +48,17 @@ CoEventEmitter.prototype.emit = function (event, data) {
 
 CoEventEmitter.prototype.resolveAll = function* () {
     var nbEvents, results;
-    do {
+    do { // yield events till no new one get added.
         nbEvents = this.events.length;
         results = yield this.events;
-    } while(nbEvents !== this.events.length); // restart if new event have been added by listener
+    } while (nbEvents !== this.events.length);
     this.events = [];
 
     return results;
 };
 
 CoEventEmitter.prototype.on = function (eventName, listener) {
-    if (typeof listener !== 'function' || listener.constructor.name !== 'GeneratorFunction')  {
+    if (typeof listener !== 'function' || listener.constructor.name !== 'GeneratorFunction') {
         throw new Error('listener must be a generator function');
     }
 
@@ -75,8 +75,8 @@ CoEventEmitter.prototype.once = function (eventName, listener) {
     });
 };
 
-CoEventEmitter.prototype.removeListener = function(eventName, listener) {
-    if (typeof listener !== 'function' || listener.constructor.name !== 'GeneratorFunction')  {
+CoEventEmitter.prototype.removeListener = function (eventName, listener) {
+    if (typeof listener !== 'function' || listener.constructor.name !== 'GeneratorFunction') {
         throw new Error('listener must be a generator function');
     }
     var listeners = this.listeners[eventName];
