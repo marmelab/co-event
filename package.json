@@ -4,7 +4,7 @@
   "description": "",
   "main": "lib/index.js",
   "scripts": {
-    "test": "node_modules/mocha/bin/mocha --harmony test/*.js test/**/*.js"
+    "test": "node_modules/mocha/bin/mocha test/*.js test/**/*.js"
   },
   "author": "",
   "license": "ISC",
@@ -12,6 +12,8 @@
     "co": "^4.4.0"
   },
   "devDependencies": {
+    "babel": "^5.8.21",
+    "babel-runtime": "^5.8.20",
     "chai": "^2.1.2",
     "co-mocha": "^1.1.0",
     "eslint": "^1.0.0",

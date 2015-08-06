@@ -34,16 +34,12 @@ describe('coEventEmitter', function () {
         it('should add one promise for each listener', function () {
             var listener = function* () {};
             coEventEmitter.on('my_event', listener);
-            var expectedEvent = {
-                event: 'my_event',
-                listeners: {}
-            };
-            expectedEvent.listeners = [co(listener())];
-
             coEventEmitter.emit('my_event', {some: 'data'});
 
-            assert.deepEqual(coEventEmitter.events(), [expectedEvent]);
-            assert.equal(coEventEmitter.events()[0].listeners[0].constructor.name, 'Promise');
+            assert.equal(coEventEmitter.events().length, 1);
+            assert.equal(coEventEmitter.events()[0].event, 'my_event');
+            assert.equal(coEventEmitter.events()[0].listeners.length, 1);
+            assert.equal(coEventEmitter.events()[0].listeners[0].toString(), '[object Promise]');
         });
 
         it('should pass all emitted arguments', function* () {
@@ -228,7 +224,7 @@ describe('coEventEmitter', function () {
             function* listener(data) {}
             coEventEmitter.once('my_event', listener);
             assert.deepEqual(coEventEmitter.listeners().my_event[0], listener);
-            assert.equal(coEventEmitter.listeners().my_event_done[0].toString(), 'function* () {\n            removeListener(eventName, listener);\n        }');
+            assert.include(coEventEmitter.listeners().my_event_done[0].toString(), 'removeListener(eventName, listener);');
         });
 
         it('should register generator to be executed only once on event', function* () {
