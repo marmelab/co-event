@@ -1,15 +1,15 @@
 'use strict';
-var co = require('co');
-var slice = Array.prototype.slice;
-var timers = require('timers');
 
-module.exports = function (debug) {
-    var events = [];
-    var listeners = {};
+import co from 'co';
+import timers from 'timers';
 
-    var executeListener = function* (listener, parameters) {
+export default function coEvent(debug) {
+    let events = [];
+    let listeners = {};
+
+    const executeListener = function* (listener, parameters) {
         yield timers.setImmediate; // wait for next event loop
-        var error;
+        let error;
 
         try {
             yield listener.apply(null, parameters);
@@ -18,31 +18,25 @@ module.exports = function (debug) {
         }
 
         if (debug) {
-            return {
-                listener: listener,
-                error: error
-            };
+            return { listener, error };
         }
     };
 
-    var emit = function (event, data) {
-        var parameters = slice.call(arguments, 1);
+    const emit = function (event, ...parameters) {
         var eventListeners = listeners[event] || [];
 
-        var tasks = eventListeners.map(function (listener) {
-            return co(executeListener(listener, parameters));
-        });
+        var tasks = eventListeners.map(listener => co(executeListener(listener, parameters)));
 
-        if (data !== 'done') {
+        if (parameters[0] !== 'done') {
             events.push({
-                event: event,
+                event,
                 listeners: tasks
             });
-            emit(event + '_done', 'done');
+            emit(`${event}_done`, 'done');
         }
     };
 
-    var resolveAll = function* () {
+    const resolveAll = function* () {
         var loop = function* loop(nbEvents, results) {
             if (events.length === nbEvents) {
                 return results;
@@ -55,7 +49,7 @@ module.exports = function (debug) {
         return results;
     };
 
-    var on = function (eventName, listener) {
+    const on = function (eventName, listener) {
         if (typeof listener !== 'function' || listener.constructor.name !== 'GeneratorFunction') {
             throw new Error('listener must be a generator function');
         }
@@ -65,14 +59,14 @@ module.exports = function (debug) {
         listeners[eventName].push(listener);
     };
 
-    var once = function (eventName, listener) {
-        on(eventName, listener);
-        on(eventName + '_done', function* () {
-            removeListener(eventName, listener);
+    const once = function (event, listener) {
+        on(event, listener);
+        on(`${event}_done`, function* () {
+            removeListener(event, listener);
         });
     };
 
-    var removeListener = function (eventName, listener) {
+    const removeListener = function (eventName, listener) {
         if (typeof listener !== 'function' || listener.constructor.name !== 'GeneratorFunction') {
             throw new Error('listener must be a generator function');
         }
@@ -88,12 +82,12 @@ module.exports = function (debug) {
     };
 
     return {
-        executeListener: executeListener,
-        emit: emit,
-        resolveAll: resolveAll,
-        on: on,
-        once: once,
-        removeListener: removeListener,
+        executeListener,
+        emit,
+        resolveAll,
+        on,
+        once,
+        removeListener,
         events: function () {
             return events;
         },

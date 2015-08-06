@@ -1,12 +1,11 @@
 'use strict';
 
-var assert = require('chai').assert;
-var co = require('co');
+import {assert} from 'chai';
 
-var CoEventEmitter = require('../');
+import CoEventEmitter from '../co-event';
 
 describe('coEventEmitter', function () {
-    var coEventEmitter;
+    let coEventEmitter;
 
     beforeEach(function () {
         coEventEmitter = CoEventEmitter(true);
@@ -14,13 +13,13 @@ describe('coEventEmitter', function () {
 
     describe('emit', function () {
         it('should add event to events array', function () {
-            coEventEmitter.emit('my_event', {some: 'data'});
+            coEventEmitter.emit('my_event', { some: 'data' });
 
-            assert.deepEqual(coEventEmitter.events(), [{event: 'my_event', listeners: []}]);
+            assert.deepEqual(coEventEmitter.events(), [ { event: 'my_event', listeners: [] } ]);
         });
 
         it('should return before executing the event and wait for the next event loop', function* () {
-            var listenerCall = [];
+            let listenerCall = [];
             coEventEmitter.on('my_event', function* (data) {
                 listenerCall.push(data);
             });
@@ -32,7 +31,7 @@ describe('coEventEmitter', function () {
         });
 
         it('should add one promise for each listener', function () {
-            var listener = function* () {};
+            let listener = function* () {};
             coEventEmitter.on('my_event', listener);
             coEventEmitter.emit('my_event', {some: 'data'});
 
@@ -43,24 +42,23 @@ describe('coEventEmitter', function () {
         });
 
         it('should pass all emitted arguments', function* () {
-            var listenerCall = [];
-            coEventEmitter.on('my_event', function* () {
-                listenerCall.push(arguments);
+            let listenerCall = [];
+            coEventEmitter.on('my_event', function* (...parameters) {
+                listenerCall.push(parameters);
             });
 
             coEventEmitter.emit('my_event', 'some', 'data');
 
             yield setImmediate;
-            let slice = Array.prototype.slice;
 
-            assert.deepEqual(slice.call(listenerCall[0]), ['some', 'data']);
+            assert.deepEqual(listenerCall[0], ['some', 'data']);
         });
     });
 
     describe('resolveAll', function () {
 
         it('should resolve all unfinished event in order, and return report of all event when done', function* () {
-            var listenerCall = [];
+            let listenerCall = [];
             function* listener(data) {
                 listenerCall.push(data);
             }
@@ -68,20 +66,20 @@ describe('coEventEmitter', function () {
             coEventEmitter.emit('my_event', {some: 'data'});
             coEventEmitter.emit('my_event', {someOther: 'data'});
 
-            var report = yield coEventEmitter.resolveAll();
+            let report = yield coEventEmitter.resolveAll();
 
-            var expectedEvent1 = {
+            let expectedEvent1 = {
                 event: 'my_event',
                 listeners: [{
-                    listener: listener,
+                    listener,
                     error: undefined
                 }]
             };
 
-            var expectedEvent2 = {
+            let expectedEvent2 = {
                 event: 'my_event',
                 listeners: [{
-                    listener: listener,
+                    listener,
                     error: undefined
                 }]
             };
@@ -93,7 +91,7 @@ describe('coEventEmitter', function () {
         });
 
         it('should emit all buffered event in order, and return an array of event (with error if any)', function* () {
-            var listenerCall = [];
+            let listenerCall = [];
 
             function* listener(data) {
                 listenerCall.push(data);
@@ -106,19 +104,19 @@ describe('coEventEmitter', function () {
             coEventEmitter.emit('my_event', {some: 'data'});
             coEventEmitter.emit('my_event', {someOther: 'data'});
 
-            var report = yield coEventEmitter.resolveAll();
+            let report = yield coEventEmitter.resolveAll();
 
-            var expectedEvent1 = {
+            let expectedEvent1 = {
                 event: 'my_event',
                 listeners: [{
-                    listener: listener,
+                    listener,
                     error: undefined
                 }]
             };
-            var expectedEvent2 = {
+            let expectedEvent2 = {
                 event: 'my_event',
                 listeners: [{
-                    listener: listener,
+                    listener,
                     error: new Error('missing some data')
                 }]
             };
@@ -136,17 +134,17 @@ describe('coEventEmitter', function () {
 
             coEventEmitter.emit('my_event');
 
-            var report = yield coEventEmitter.resolveAll();
+            let report = yield coEventEmitter.resolveAll();
 
-            var expectedEvent1 = {
+            let expectedEvent1 = {
                 event: 'my_event',
                 listeners: [{
-                    listener: listener,
+                    listener,
                     error: undefined
                 }]
             };
 
-            var expectedEvent2 = {
+            let expectedEvent2 = {
                 event: 'nested_event',
                 listeners: [{
                     listener: nestedListener,
@@ -168,7 +166,7 @@ describe('coEventEmitter', function () {
         });
 
         it('should not trigger registered generator on other event', function* () {
-            var myEventListenerCall = [];
+            let myEventListenerCall = [];
             coEventEmitter.on('my_event', function* listener(data) {
                 myEventListenerCall.push(data);
             });
@@ -180,7 +178,7 @@ describe('coEventEmitter', function () {
         });
 
         it('should register generator to be executed each time on event', function* () {
-            var myEventListenerCall = [];
+            let myEventListenerCall = [];
             coEventEmitter.on('my_event', function* listener(data) {
                 yield function (done) {
                     setTimeout(done, 1);
@@ -200,8 +198,8 @@ describe('coEventEmitter', function () {
         });
 
         it('should allow to register several generator on one event', function* () {
-            var myEventListener1Call = [];
-            var myEventListener2Call = [];
+            let myEventListener1Call = [];
+            let myEventListener2Call = [];
             coEventEmitter.on('my_event', function* listener1(data) {
                 myEventListener1Call.push(data);
             });
@@ -224,11 +222,11 @@ describe('coEventEmitter', function () {
             function* listener(data) {}
             coEventEmitter.once('my_event', listener);
             assert.deepEqual(coEventEmitter.listeners().my_event[0], listener);
-            assert.include(coEventEmitter.listeners().my_event_done[0].toString(), 'removeListener(eventName, listener);');
+            assert.include(coEventEmitter.listeners().my_event_done[0].toString(), 'removeListener(event, listener);');
         });
 
         it('should register generator to be executed only once on event', function* () {
-            var myEventListenerCall = [];
+            let myEventListenerCall = [];
             coEventEmitter.once('my_event', function* listener(data) {
                 myEventListenerCall.push(data);
             });
@@ -243,8 +241,8 @@ describe('coEventEmitter', function () {
         });
 
         it('should work with different once listener', function* () {
-            var myEventListener1Call = [];
-            var myEventListener2Call = [];
+            let myEventListener1Call = [];
+            let myEventListener2Call = [];
             coEventEmitter.once('my_event', function* listener1(data) {
                 myEventListener1Call.push(data);
             });
@@ -272,8 +270,8 @@ describe('coEventEmitter', function () {
         });
 
         it('should not remove specified listener it it is not on specified event', function () {
-            var listener1 = function* listener1() {};
-            var listener2 = function* listener2() {};
+            let listener1 = function* listener1() {};
+            let listener2 = function* listener2() {};
 
             coEventEmitter.on('my_event', listener1);
             coEventEmitter.on('other_event', listener2);
@@ -284,8 +282,8 @@ describe('coEventEmitter', function () {
         });
 
         it('should remove specified listener only on specified event', function () {
-            var listener1 = function* listener1() {};
-            var listener2 = function* listener2() {};
+            let listener2 = function* listener2() {};
+            let listener1 = function* listener1() {};
 
             coEventEmitter.on('my_event', listener1);
             coEventEmitter.on('my_event', listener2);
