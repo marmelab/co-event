@@ -1,93 +1,104 @@
 'use strict';
 var co = require('co');
 var slice = Array.prototype.slice;
+var timers = require('timers');
 
-function CoEventEmitter(debug) {
-    this.debug = debug;
-    this.events = [];
-    this.listeners = {};
-}
+module.exports = function (debug) {
+    var events = [];
+    var listeners = {};
 
-CoEventEmitter.prototype.executeListener = function* (listener, parameters) {
-    yield setImmediate; // wait for next event loop
-    var error;
+    var executeListener = function* (listener, parameters) {
+        yield timers.setImmediate; // wait for next event loop
+        var error;
 
-    try {
-        yield listener.apply(null, parameters);
-    } catch(e) {
-        error = e;
-    }
+        try {
+            yield listener.apply(null, parameters);
+        } catch(e) {
+            error = e;
+        }
 
-    if (this.debug) {
-        return {
-            listener: listener,
-            error: error
-        };
-    }
-};
+        if (debug) {
+            return {
+                listener: listener,
+                error: error
+            };
+        }
+    };
 
-CoEventEmitter.prototype.emit = function (event, data) {
-    var self = this;
-    var parameters = slice.call(arguments, 1);
-    var listeners = self.listeners[event] || [];
+    var emit = function (event, data) {
+        var parameters = slice.call(arguments, 1);
+        var eventListeners = listeners[event] || [];
 
-    var tasks = listeners.map(function (listener) {
-        return co(self.executeListener(listener, parameters));
-    });
-
-    if (data !== 'done') {
-        self.events.push({
-            event: event,
-            listeners: tasks
+        var tasks = eventListeners.map(function (listener) {
+            return co(executeListener(listener, parameters));
         });
-        self.emit(event + '_done', 'done');
-    }
 
-    return self;
+        if (data !== 'done') {
+            events.push({
+                event: event,
+                listeners: tasks
+            });
+            emit(event + '_done', 'done');
+        }
+    };
+
+    var resolveAll = function* () {
+        var loop = function* loop(nbEvents, results) {
+            if (events.length === nbEvents) {
+                return results;
+            }
+            return yield loop(events.length, yield events);
+        };
+        var results = yield loop(0, []);
+        events = [];
+
+        return results;
+    };
+
+    var on = function (eventName, listener) {
+        if (typeof listener !== 'function' || listener.constructor.name !== 'GeneratorFunction') {
+            throw new Error('listener must be a generator function');
+        }
+
+        listeners[eventName] = listeners[eventName] || [];
+
+        listeners[eventName].push(listener);
+    };
+
+    var once = function (eventName, listener) {
+        on(eventName, listener);
+        on(eventName + '_done', function* () {
+            removeListener(eventName, listener);
+        });
+    };
+
+    var removeListener = function (eventName, listener) {
+        if (typeof listener !== 'function' || listener.constructor.name !== 'GeneratorFunction') {
+            throw new Error('listener must be a generator function');
+        }
+        var eventListeners = listeners[eventName];
+
+        var index = eventListeners.indexOf(listener);
+
+        if (index === -1) { return null; }
+
+        eventListeners.splice(index, 1);
+
+        return listener;
+    };
+
+    return {
+        executeListener: executeListener,
+        emit: emit,
+        resolveAll: resolveAll,
+        on: on,
+        once: once,
+        removeListener: removeListener,
+        events: function () {
+            return events;
+        },
+        listeners: function () {
+            return listeners;
+        }
+    };
 };
-
-CoEventEmitter.prototype.resolveAll = function* () {
-    var nbEvents, results;
-    do { // yield events till no new one get added.
-        nbEvents = this.events.length;
-        results = yield this.events;
-    } while (nbEvents !== this.events.length);
-    this.events = [];
-
-    return results;
-};
-
-CoEventEmitter.prototype.on = function (eventName, listener) {
-    if (typeof listener !== 'function' || listener.constructor.name !== 'GeneratorFunction') {
-        throw new Error('listener must be a generator function');
-    }
-
-    this.listeners[eventName] = this.listeners[eventName] || [];
-
-    this.listeners[eventName].push(listener);
-};
-
-CoEventEmitter.prototype.once = function (eventName, listener) {
-    var self = this;
-    self.on(eventName, listener);
-    self.on(eventName + '_done', function* () {
-        self.removeListener(eventName, listener);
-    });
-};
-
-CoEventEmitter.prototype.removeListener = function (eventName, listener) {
-    if (typeof listener !== 'function' || listener.constructor.name !== 'GeneratorFunction') {
-        throw new Error('listener must be a generator function');
-    }
-    var listeners = this.listeners[eventName];
-
-    var index = listeners.indexOf(listener);
-
-    if (index === -1) { return this; }
-
-    listeners.splice(index, 1);
-
-    return this;
-};
-
-module.exports = CoEventEmitter;
