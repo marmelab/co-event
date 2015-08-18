@@ -8,14 +8,19 @@ describe('coEventEmitter', function () {
     let coEventEmitter;
 
     beforeEach(function () {
-        coEventEmitter = new CoEventEmitter({}, [], true);
+        coEventEmitter = new CoEventEmitter(true);
     });
 
     describe('emit', function () {
-        it('should add event to events array', function () {
-            coEventEmitter.emit('my_event', { some: 'data' });
+        it('should return false if there is no listener for event', function () {
+            assert.isFalse(coEventEmitter.emit('my_event', { some: 'data' }));
+        });
 
-            assert.deepEqual(coEventEmitter.events, [ { event: 'my_event', listeners: [] } ]);
+        it('should return true and add an event if there is listener for event the', function () {
+            coEventEmitter.on('my_event', function* () {});
+            assert.isTrue(coEventEmitter.emit('my_event', { some: 'data' }));
+
+            assert.deepEqual(coEventEmitter.events, [ { event: 'my_event', listeners: [ new Promise(function () {}) ] } ]);
         });
 
         it('should return before executing the event and wait for the next event loop', function* () {
@@ -218,13 +223,6 @@ describe('coEventEmitter', function () {
 
     describe('once', function () {
 
-        it('should register a remove listener on event_done event', function* () {
-            function* listener(data) {}
-            coEventEmitter.once('my_event', listener);
-            assert.deepEqual(coEventEmitter.listeners.my_event[0], listener);
-            assert.include(coEventEmitter.listeners.my_event_done[0].toString(), 'removeListener(event, listener);');
-        });
-
         it('should register generator to be executed only once on event', function* () {
             let myEventListenerCall = [];
             coEventEmitter.once('my_event', function* listener(data) {
@@ -277,8 +275,8 @@ describe('coEventEmitter', function () {
             coEventEmitter.on('other_event', listener2);
 
             coEventEmitter.removeListener('other_event', listener1);
-            assert.deepEqual(coEventEmitter.listeners['my_event'], [listener1]);
-            assert.deepEqual(coEventEmitter.listeners['other_event'], [listener2]);
+            assert.deepEqual(coEventEmitter.listeners('my_event'), [listener1]);
+            assert.deepEqual(coEventEmitter.listeners('other_event'), [listener2]);
         });
 
         it('should remove specified listener only on specified event', function () {
@@ -290,8 +288,8 @@ describe('coEventEmitter', function () {
             coEventEmitter.on('other_event', listener1);
 
             coEventEmitter.removeListener('my_event', listener1);
-            assert.deepEqual(coEventEmitter.listeners['my_event'], [listener2]);
-            assert.deepEqual(coEventEmitter.listeners['other_event'], [listener1]);
+            assert.deepEqual(coEventEmitter.listeners('my_event'), [listener2]);
+            assert.deepEqual(coEventEmitter.listeners('other_event'), [listener1]);
         });
     });
 
