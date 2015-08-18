@@ -3,96 +3,84 @@
 import co from 'co';
 import timers from 'timers';
 
-export default function coEvent(debug) {
-    let events = [];
-    let listeners = {};
+export default class coEvent {
+    constructor(listeners = {}, events = [], debug) {
+        this.events = events;
+        this.listeners = listeners;
+        this.debug = debug;
+    }
 
-    const executeListener = function* (listener, parameters) {
+    * executeListener(listener, parameters) {
         yield timers.setImmediate; // wait for next event loop
         let error;
 
         try {
-            yield listener.apply(null, parameters);
+            yield listener.apply(this, parameters);
         } catch(e) {
             error = e;
         }
 
-        if (debug) {
+        if (this.debug) {
             return { listener, error };
         }
     };
 
-    const emit = function (event, ...parameters) {
-        var eventListeners = listeners[event] || [];
+    emit(event, ...parameters) {
+        const eventListeners = this.listeners[event] || [];
 
-        var tasks = eventListeners.map(listener => co(executeListener(listener, parameters)));
+        const tasks = eventListeners.map(listener => co(this.executeListener(listener, parameters)));
 
         if (parameters[0] !== 'done') {
-            events.push({
+            this.events.push({
                 event,
                 listeners: tasks
             });
-            emit(`${event}_done`, 'done');
+            this.emit(`${event}_done`, 'done');
         }
     };
 
-    const resolveAll = function* () {
-        var loop = function* loop(nbEvents, results) {
-            if (events.length === nbEvents) {
+    * resolveAll() {
+        const loop = function* loop(e, results) {
+            if (e.length === results.length) {
                 return results;
             }
-            return yield loop(events.length, yield events);
+            return yield loop(e, yield e);
         };
-        var results = yield loop(0, []);
-        events = [];
+        const results = yield loop(this.events, []);
+        this.events = [];
 
         return results;
     };
 
-    const on = function (eventName, listener) {
+    on(eventName, listener) {
         if (typeof listener !== 'function' || listener.constructor.name !== 'GeneratorFunction') {
             throw new Error('listener must be a generator function');
         }
 
-        listeners[eventName] = listeners[eventName] || [];
+        this.listeners[eventName] = this.listeners[eventName] || [];
 
-        listeners[eventName].push(listener);
+        this.listeners[eventName].push(listener);
     };
 
-    const once = function (event, listener) {
-        on(event, listener);
-        on(`${event}_done`, function* () {
-            removeListener(event, listener);
+    once(event, listener) {
+        this.on(event, listener);
+        this.on(`${event}_done`, function* () {
+            this.removeListener(event, listener);
         });
     };
 
-    const removeListener = function (eventName, listener) {
+    removeListener(eventName, listener) {
         if (typeof listener !== 'function' || listener.constructor.name !== 'GeneratorFunction') {
             throw new Error('listener must be a generator function');
         }
-        var eventListeners = listeners[eventName];
+        const eventListeners = this.listeners[eventName];
 
-        var index = eventListeners.indexOf(listener);
+        const index = eventListeners.indexOf(listener);
 
         if (index === -1) { return null; }
 
         eventListeners.splice(index, 1);
 
         return listener;
-    };
-
-    return {
-        executeListener,
-        emit,
-        resolveAll,
-        on,
-        once,
-        removeListener,
-        events: function () {
-            return events;
-        },
-        listeners: function () {
-            return listeners;
-        }
     };
 };

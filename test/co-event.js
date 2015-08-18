@@ -8,14 +8,14 @@ describe('coEventEmitter', function () {
     let coEventEmitter;
 
     beforeEach(function () {
-        coEventEmitter = CoEventEmitter(true);
+        coEventEmitter = new CoEventEmitter({}, [], true);
     });
 
     describe('emit', function () {
         it('should add event to events array', function () {
             coEventEmitter.emit('my_event', { some: 'data' });
 
-            assert.deepEqual(coEventEmitter.events(), [ { event: 'my_event', listeners: [] } ]);
+            assert.deepEqual(coEventEmitter.events, [ { event: 'my_event', listeners: [] } ]);
         });
 
         it('should return before executing the event and wait for the next event loop', function* () {
@@ -26,7 +26,7 @@ describe('coEventEmitter', function () {
             coEventEmitter.emit('my_event', {some: 'data'});
 
             assert.deepEqual(listenerCall, []);
-            yield setImmediate;
+            yield coEventEmitter.resolveAll();
             assert.deepEqual(listenerCall, [{some: 'data'}]);
         });
 
@@ -35,10 +35,10 @@ describe('coEventEmitter', function () {
             coEventEmitter.on('my_event', listener);
             coEventEmitter.emit('my_event', {some: 'data'});
 
-            assert.equal(coEventEmitter.events().length, 1);
-            assert.equal(coEventEmitter.events()[0].event, 'my_event');
-            assert.equal(coEventEmitter.events()[0].listeners.length, 1);
-            assert.equal(coEventEmitter.events()[0].listeners[0].toString(), '[object Promise]');
+            assert.equal(coEventEmitter.events.length, 1);
+            assert.equal(coEventEmitter.events[0].event, 'my_event');
+            assert.equal(coEventEmitter.events[0].listeners.length, 1);
+            assert.equal(coEventEmitter.events[0].listeners[0].toString(), '[object Promise]');
         });
 
         it('should pass all emitted arguments', function* () {
@@ -87,7 +87,7 @@ describe('coEventEmitter', function () {
             assert.deepEqual(report, [expectedEvent1, expectedEvent2]);
 
             assert.deepEqual(listenerCall, [{some: 'data'}, {someOther: 'data'}]);
-            assert.deepEqual(coEventEmitter.events(), []);
+            assert.deepEqual(coEventEmitter.events, []);
         });
 
         it('should emit all buffered event in order, and return an array of event (with error if any)', function* () {
@@ -221,8 +221,8 @@ describe('coEventEmitter', function () {
         it('should register a remove listener on event_done event', function* () {
             function* listener(data) {}
             coEventEmitter.once('my_event', listener);
-            assert.deepEqual(coEventEmitter.listeners().my_event[0], listener);
-            assert.include(coEventEmitter.listeners().my_event_done[0].toString(), 'removeListener(event, listener);');
+            assert.deepEqual(coEventEmitter.listeners.my_event[0], listener);
+            assert.include(coEventEmitter.listeners.my_event_done[0].toString(), 'removeListener(event, listener);');
         });
 
         it('should register generator to be executed only once on event', function* () {
@@ -277,8 +277,8 @@ describe('coEventEmitter', function () {
             coEventEmitter.on('other_event', listener2);
 
             coEventEmitter.removeListener('other_event', listener1);
-            assert.deepEqual(coEventEmitter.listeners()['my_event'], [listener1]);
-            assert.deepEqual(coEventEmitter.listeners()['other_event'], [listener2]);
+            assert.deepEqual(coEventEmitter.listeners['my_event'], [listener1]);
+            assert.deepEqual(coEventEmitter.listeners['other_event'], [listener2]);
         });
 
         it('should remove specified listener only on specified event', function () {
@@ -290,8 +290,8 @@ describe('coEventEmitter', function () {
             coEventEmitter.on('other_event', listener1);
 
             coEventEmitter.removeListener('my_event', listener1);
-            assert.deepEqual(coEventEmitter.listeners()['my_event'], [listener2]);
-            assert.deepEqual(coEventEmitter.listeners()['other_event'], [listener1]);
+            assert.deepEqual(coEventEmitter.listeners['my_event'], [listener2]);
+            assert.deepEqual(coEventEmitter.listeners['other_event'], [listener1]);
         });
     });
 
