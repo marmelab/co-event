@@ -12,15 +12,59 @@ describe('coEventEmitter', function () {
     });
 
     describe('emit', function () {
-        it('should return false if there is no listener for event', function () {
-            assert.isFalse(coEventEmitter.emit('my_event', { some: 'data' }));
+        it('should return a promise that resolve to false if there is no listener for event', function* () {
+            const promise = coEventEmitter.emit('my_event', { some: 'data' });
+            assert.deepEqual(promise.toString(), '[object Promise]');
+            assert.isFalse(yield promise);
         });
 
-        it('should return true and add an event if there is listener for event the', function () {
-            coEventEmitter.on('my_event', function* () {});
-            assert.isTrue(coEventEmitter.emit('my_event', { some: 'data' }));
+        it('should return a promise that resolve to true if there is listener for the event', function* () {
+            const listener = function* () {};
+            coEventEmitter.on('my_event', listener);
 
-            assert.deepEqual(coEventEmitter.events, [ { event: 'my_event', listeners: [ new Promise(function () {}) ] } ]);
+            const promise = coEventEmitter.emit('my_event', { some: 'data' });
+            assert.deepEqual(promise.toString(), '[object Promise]');
+            assert.isTrue(yield coEventEmitter.emit('my_event', { some: 'data' }));
+        });
+
+        it('should return a promise that reject with error thrown by listener', function* () {
+            const listener = function* () {
+                throw new Error('Boom');
+            };
+            coEventEmitter.on('my_event', listener);
+
+            const promise = coEventEmitter.emit('my_event', { some: 'data' });
+            assert.deepEqual(promise.toString(), '[object Promise]');
+            let error;
+            try {
+                assert.isTrue(yield coEventEmitter.emit('my_event', { some: 'data' }));
+            } catch (e) {
+                error = e;
+            }
+            assert.include(error.message, 'Boom');
+        });
+
+        it('should return a promise that reject with all error thrown by listener', function* () {
+            const listener1 = function* () {
+                throw new Error('Boom1');
+            };
+            coEventEmitter.on('my_event', listener1);
+            const listener2 = function* () {
+                throw new Error('Boom2');
+            };
+            coEventEmitter.on('my_event', listener2);
+
+            const promise = coEventEmitter.emit('my_event', { some: 'data' });
+            assert.deepEqual(promise.toString(), '[object Promise]');
+            let error;
+            try {
+                assert.isTrue(yield coEventEmitter.emit('my_event', { some: 'data' }));
+            } catch (e) {
+                error = e;
+            }
+
+            assert.include(error.message, 'Boom1');
+            assert.include(error.message, 'Boom2');
         });
 
         it('should return before executing the event and wait for the next event loop', function* () {
@@ -31,7 +75,7 @@ describe('coEventEmitter', function () {
             coEventEmitter.emit('my_event', {some: 'data'});
 
             assert.deepEqual(listenerCall, []);
-            yield coEventEmitter.resolveAll();
+            yield setImmediate;
             assert.deepEqual(listenerCall, [{some: 'data'}]);
         });
 
@@ -41,9 +85,8 @@ describe('coEventEmitter', function () {
             coEventEmitter.emit('my_event', {some: 'data'});
 
             assert.equal(coEventEmitter.events.length, 1);
-            assert.equal(coEventEmitter.events[0].event, 'my_event');
-            assert.equal(coEventEmitter.events[0].listeners.length, 1);
-            assert.equal(coEventEmitter.events[0].listeners[0].toString(), '[object Promise]');
+            assert.equal(coEventEmitter.events.length, 1);
+            assert.equal(coEventEmitter.events[0].toString(), '[object Promise]');
         });
 
         it('should pass all emitted arguments', function* () {
@@ -73,29 +116,13 @@ describe('coEventEmitter', function () {
 
             let report = yield coEventEmitter.resolveAll();
 
-            let expectedEvent1 = {
-                event: 'my_event',
-                listeners: [{
-                    listener,
-                    error: undefined
-                }]
-            };
-
-            let expectedEvent2 = {
-                event: 'my_event',
-                listeners: [{
-                    listener,
-                    error: undefined
-                }]
-            };
-
-            assert.deepEqual(report, [expectedEvent1, expectedEvent2]);
+            assert.equal(report, undefined);
 
             assert.deepEqual(listenerCall, [{some: 'data'}, {someOther: 'data'}]);
             assert.deepEqual(coEventEmitter.events, []);
         });
 
-        it('should emit all buffered event in order, and return an array of event (with error if any)', function* () {
+        it('should emit all buffered event in order, throw error if any)', function* () {
             let listenerCall = [];
 
             function* listener(data) {
@@ -108,55 +135,35 @@ describe('coEventEmitter', function () {
             coEventEmitter.on('my_event', listener);
             coEventEmitter.emit('my_event', {some: 'data'});
             coEventEmitter.emit('my_event', {someOther: 'data'});
+            let error;
+            try {
+                yield coEventEmitter.resolveAll();
+            } catch (e) {
+                error = e;
+            }
 
-            let report = yield coEventEmitter.resolveAll();
-
-            let expectedEvent1 = {
-                event: 'my_event',
-                listeners: [{
-                    listener,
-                    error: undefined
-                }]
-            };
-            let expectedEvent2 = {
-                event: 'my_event',
-                listeners: [{
-                    listener,
-                    error: new Error('missing some data')
-                }]
-            };
-
-            assert.deepEqual(report, [expectedEvent1, expectedEvent2]);
+            assert.deepEqual(error, new Error('missing some data'));
         });
 
         it('should wait for event emitted by registered listener too', function* () {
+            let listenerCall = 0;
             function* listener() {
+                listenerCall++;
                 coEventEmitter.emit('nested_event');
             }
-            function* nestedListener() {}
+            let nestedListenerCall = 0;
+            function* nestedListener() {
+                nestedListenerCall++;
+            }
             coEventEmitter.on('my_event', listener);
             coEventEmitter.on('nested_event', nestedListener);
 
             coEventEmitter.emit('my_event');
 
-            let report = yield coEventEmitter.resolveAll();
+            yield coEventEmitter.resolveAll();
 
-            let expectedEvent1 = {
-                event: 'my_event',
-                listeners: [{
-                    listener,
-                    error: undefined
-                }]
-            };
-
-            let expectedEvent2 = {
-                event: 'nested_event',
-                listeners: [{
-                    listener: nestedListener,
-                    error: undefined
-                }]
-            };
-            assert.deepEqual(report, [expectedEvent1, expectedEvent2]);
+            assert.equal(listenerCall, 1);
+            assert.equal(nestedListenerCall, 1);
         });
 
     });

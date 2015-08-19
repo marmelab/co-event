@@ -5,7 +5,19 @@ import timers from 'timers';
 
 let defaultMaxListeners = 10;
 
-var listeners = Symbol('listeners');
+const resolve = function resolve(tasks) {
+    return co(function* () {
+        const errors = (yield tasks).filter(error => !!error);
+
+        if (errors.length > 0) {
+            throw new Error(errors.map(e => e.stack).join('\n'));
+        }
+
+        return true;
+    });
+};
+
+const listeners = Symbol('listeners');
 
 export default class coEvent {
     constructor(debug) {
@@ -17,16 +29,10 @@ export default class coEvent {
 
     * executeListener(listener, parameters) {
         yield timers.setImmediate; // wait for next event loop
-        let error;
-
         try {
             yield listener(...parameters);
-        } catch(e) {
-            error = e;
-        }
-
-        if (this.debug) {
-            return { listener, error };
+        } catch (error) {
+            return error;
         }
     };
 
@@ -34,30 +40,25 @@ export default class coEvent {
         const eventListeners = this[listeners][event] || [];
 
         if (eventListeners.length === 0) {
-            return false;
+            return new Promise(function (done) {
+                done(false);
+            });
         }
 
         const tasks = eventListeners.map(listener => co(this.executeListener(listener, parameters)));
 
-        this.events.push({
-            event,
-            listeners: tasks
-        });
+        this.events = this.events.concat(tasks);
 
-        return true;
+        return resolve(tasks);
     };
 
     * resolveAll() {
-        const loop = function* loop(e, results) {
-            if (e.length === results.length) {
-                return results;
-            }
-            return yield loop(e, yield e);
-        };
-        const results = yield loop(this.events, []);
+        let nbEvents;
+        do {
+            nbEvents = this.events.length;
+            yield resolve(this.events);
+        } while (this.events.length > nbEvents)
         this.events = [];
-
-        return results;
     };
 
     addListener(event, listener) {
