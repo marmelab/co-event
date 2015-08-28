@@ -1,19 +1,9 @@
 'use strict';
 
-import timers from 'timers';
 import co from 'co';
+import executeListener from './executeListener';
 
 let defaultMaxListeners = 10;
-
-const executeListener = function* executeListener(listener, parameters) {
-    if (listener.constructor.name !== 'GeneratorFunction') {
-        return yield executeListener(function* (params) {
-            listener(...params);
-        }, parameters);
-    }
-    yield timers.setImmediate; // wait for next event loop
-    yield listener(...parameters);
-};
 
 const listeners = Symbol('listeners');
 
