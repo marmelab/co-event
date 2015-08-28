@@ -44,7 +44,7 @@ describe('coEventEmitter', function () {
             assert.include(error.message, 'Boom');
         });
 
-        it('should return a promise that reject with all error thrown by listener', function* () {
+        it('should return a promise that reject with first error thrown by listener', function* () {
             const listener1 = function* () {
                 throw new Error('Boom1');
             };
@@ -63,8 +63,7 @@ describe('coEventEmitter', function () {
                 error = e;
             }
 
-            assert.include(error.message, 'Boom1');
-            assert.include(error.message, 'Boom2');
+            assert.equal(error.message, 'Boom1');
         });
 
         it('should return before executing the event and wait for the next event loop', function* () {
@@ -170,10 +169,10 @@ describe('coEventEmitter', function () {
 
     describe('on', function () {
 
-        it('should throw an error if passing a non generator function', function () {
+        it('should throw an error if passing a non function', function () {
             assert.throws(function () {
-                coEventEmitter.on('my_event', function listener(data) {});
-            }, 'listener must be a generator function');
+                coEventEmitter.on('my_event', new Promise(function () {}));
+            }, 'listener must be a function');
 
         });
 

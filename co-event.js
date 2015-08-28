@@ -1,20 +1,18 @@
 'use strict';
 
-import co from 'co';
 import timers from 'timers';
+import co from 'co';
 
 let defaultMaxListeners = 10;
 
-const resolve = function resolve(tasks) {
-    return co(function* () {
-        const errors = (yield tasks).filter(error => !!error);
-
-        if (errors.length > 0) {
-            throw new Error(errors.map(e => e.stack).join('\n'));
-        }
-
-        return true;
-    });
+const executeListener = function* executeListener(listener, parameters) {
+    if (listener.constructor.name !== 'GeneratorFunction') {
+        return yield executeListener(function* (params) {
+            listener(...params);
+        }, parameters);
+    }
+    yield timers.setImmediate; // wait for next event loop
+    yield listener(...parameters);
 };
 
 const listeners = Symbol('listeners');
@@ -27,15 +25,6 @@ export default class coEvent {
         this.maxListeners = defaultMaxListeners;
     }
 
-    * executeListener(listener, parameters) {
-        yield timers.setImmediate; // wait for next event loop
-        try {
-            yield listener(...parameters);
-        } catch (error) {
-            return error;
-        }
-    };
-
     emit(event, ...parameters) {
         const eventListeners = this[listeners][event] || [];
 
@@ -45,25 +34,25 @@ export default class coEvent {
             });
         }
 
-        const tasks = eventListeners.map(listener => co(this.executeListener(listener, parameters)));
+        const tasks = eventListeners.map(listener => co(executeListener(listener, parameters)));
 
         this.events = this.events.concat(tasks);
 
-        return resolve(tasks);
+        return Promise.all(tasks).then(result => true);
     };
 
     * resolveAll() {
         let nbEvents;
         do {
             nbEvents = this.events.length;
-            yield resolve(this.events);
+            yield this.events;
         } while (this.events.length > nbEvents)
         this.events = [];
     };
 
     addListener(event, listener) {
-        if (typeof listener !== 'function' || listener.constructor.name !== 'GeneratorFunction') {
-            throw new Error('listener must be a generator function');
+        if (typeof listener !== 'function') {
+            throw new Error('listener must be a function or a generator function');
         }
 
         this[listeners][event] = this[listeners][event] || [];
@@ -98,7 +87,6 @@ export default class coEvent {
 
     once(event, listener) {
         const removeListener = this.removeListener.bind(this);
-        const executeListener = this.executeListener.bind(this);
         const debug = this.debug;
         const wrappedListener = function* wrappedListener(...parameters) {
             const result = yield executeListener(listener, parameters);
