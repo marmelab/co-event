@@ -8,7 +8,7 @@ describe('coEventEmitter', function () {
     let coEventEmitter;
 
     beforeEach(function () {
-        coEventEmitter = new CoEventEmitter(true);
+        coEventEmitter = new CoEventEmitter();
     });
 
     describe('emit', function () {
@@ -78,16 +78,6 @@ describe('coEventEmitter', function () {
             assert.deepEqual(listenerCall, [{some: 'data'}]);
         });
 
-        it('should add one promise for each listener', function () {
-            let listener = function* () {};
-            coEventEmitter.on('my_event', listener);
-            coEventEmitter.emit('my_event', {some: 'data'});
-
-            assert.equal(coEventEmitter.events.length, 1);
-            assert.equal(coEventEmitter.events.length, 1);
-            assert.equal(coEventEmitter.events[0].toString(), '[object Promise]');
-        });
-
         it('should pass all emitted arguments', function* () {
             let listenerCall = [];
             coEventEmitter.on('my_event', function* (...parameters) {
@@ -118,7 +108,6 @@ describe('coEventEmitter', function () {
             assert.equal(report, undefined);
 
             assert.deepEqual(listenerCall, [{some: 'data'}, {someOther: 'data'}]);
-            assert.deepEqual(coEventEmitter.events, []);
         });
 
         it('should emit all buffered event in order, throw error if any)', function* () {
@@ -267,9 +256,9 @@ describe('coEventEmitter', function () {
     });
 
     describe('removeListener', function () {
-        it('should throw an error if listener is not a generator', function () {
+        it('should throw an error if listener is not a function', function () {
             assert.throws(function () {
-                coEventEmitter.removeListener('my_event', function listener(data) {});
+                coEventEmitter.removeListener('my_event', new Promise(function () {}));
             }, 'listener must be a generator function');
         });
 
