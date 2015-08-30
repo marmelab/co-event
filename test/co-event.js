@@ -92,14 +92,15 @@ describe('coEventEmitter', function () {
         });
 
         it('should remove resolved promise from events', function* () {
+            const events = Object.getOwnPropertySymbols(coEventEmitter)[0];
             let listenerCall = [];
             coEventEmitter.on('my_event', function* (data) {
                 listenerCall.push(data);
             });
             const promise = coEventEmitter.emit('my_event', {some: 'data'});
-            assert.equal(coEventEmitter[Object.getOwnPropertySymbols(coEventEmitter)[0]].size, 1);
+            assert.equal(coEventEmitter[events].size, 1);
             yield promise;
-            assert.equal(coEventEmitter[Object.getOwnPropertySymbols(coEventEmitter)[0]].size, 0);
+            assert.equal(coEventEmitter[events].size, 0);
             assert.deepEqual(listenerCall[0], { some: 'data' });
         });
     });

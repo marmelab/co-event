@@ -1,12 +1,8 @@
-This is a POC
+Event emitter returning promise and accepting generator.
 
-Event emitter pattern using generator.
+This eventEmitter allow o use generator as listener.
+Additionnally, The emit method now return a promise, that allow to know when a listener for a given event get executed.
+The promise will also get rejected if one of the listener failed.
 
-Keeping modularity of event emitter. We emit an event, we don't need to know who will listen to it.
-
-Adding generator, we can know when all listener are done, and if some had error.
-We can buffer event to be treated at a later time.
-
-Integrating it to koa. Emitting event on the scope of a request.
-
-
+The resolveAll method will return a promise that will resolve when all queued event are done.
+The promise will also fail if one listener triggered an error.

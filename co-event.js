@@ -34,13 +34,15 @@ export default class coEvent {
         return tasks;
     };
 
-    * resolveAll() {
-        if (this[events].size === 0) {
-            return;
-        }
-        yield Array.from(this[events].values());
+    resolveAll() {
+        return co(function* () {
+            if (this[events].size === 0) {
+                return;
+            }
+            yield Array.from(this[events].values());
 
-        return yield this.resolveAll();
+            return yield this.resolveAll();
+        }.bind(this));
     };
 
     addListener(event, listener) {
