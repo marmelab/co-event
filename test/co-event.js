@@ -90,6 +90,18 @@ describe('coEventEmitter', function () {
 
             assert.deepEqual(listenerCall[0], ['some', 'data']);
         });
+
+        it('should remove resolved promise from events', function* () {
+            let listenerCall = [];
+            coEventEmitter.on('my_event', function* (data) {
+                listenerCall.push(data);
+            });
+            const promise = coEventEmitter.emit('my_event', {some: 'data'});
+            assert.equal(coEventEmitter[Object.getOwnPropertySymbols(coEventEmitter)[0]].size, 1);
+            yield promise;
+            assert.equal(coEventEmitter[Object.getOwnPropertySymbols(coEventEmitter)[0]].size, 0);
+            assert.deepEqual(listenerCall[0], { some: 'data' });
+        });
     });
 
     describe('resolveAll', function () {
@@ -147,7 +159,6 @@ describe('coEventEmitter', function () {
             coEventEmitter.on('nested_event', nestedListener);
 
             coEventEmitter.emit('my_event');
-
             yield coEventEmitter.resolveAll();
 
             assert.equal(listenerCall, 1);

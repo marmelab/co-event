@@ -10,7 +10,7 @@ const events = Symbol('events');
 
 export default class coEvent {
     constructor() {
-        this[events] = [];
+        this[events] = new Set();
         this[listeners] = {};
         this.maxListeners = defaultMaxListeners;
     }
@@ -24,20 +24,23 @@ export default class coEvent {
             });
         }
 
-        const tasks = eventListeners.map(listener => co(executeListener(listener, parameters)));
+        const tasks = Promise.all(eventListeners.map(listener => co(executeListener(listener, parameters)))).then(() => {
+            this[events].delete(tasks);
+            return true;
+        });
 
-        this[events] = this[events].concat(tasks);
+        this[events].add(tasks);
 
-        return Promise.all(tasks).then(result => true);
+        return tasks;
     };
 
     * resolveAll() {
-        let nbEvents;
-        do {
-            nbEvents = this[events].length;
-            yield this[events];
-        } while (this[events].length > nbEvents)
-        this[events] = [];
+        if (this[events].size === 0) {
+            return;
+        }
+        yield Array.from(this[events].values());
+
+        return yield this.resolveAll();
     };
 
     addListener(event, listener) {
