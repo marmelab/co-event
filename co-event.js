@@ -19,24 +19,32 @@ export default class coEvent {
         const eventListeners = this[listeners][event] || [];
 
         if (eventListeners.length === 0) {
-            return new Promise(function (done) {
+            return () => new Promise(function (done) {
                 done(false);
             });
         }
 
-        const tasks = Promise.all(eventListeners.map(listener => co(executeListener(listener, parameters)))).then(() => {
+        const tasks = Promise.all(eventListeners.map(listener => co(executeListener(listener, parameters))))
+        .then(() => {
             this[events].delete(tasks);
             return true;
         });
 
         this[events].add(tasks);
 
-        return tasks;
+        return () => {
+            return co(tasks)
+            .catch(error => {
+                this[events].delete(tasks);
+                return new Promise((_, reject) => reject(error));
+            });
+        };
     };
 
     resolveAll() {
         return co(function* () {
             if (this[events].size === 0) {
+                this[events].clear();
                 return;
             }
             yield Array.from(this[events].values());

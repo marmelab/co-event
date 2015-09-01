@@ -13,38 +13,40 @@ describe('coEventEmitter', function () {
 
     describe('emit', function () {
         it('should return a promise that resolve to false if there is no listener for event', function* () {
-            const promise = coEventEmitter.emit('my_event', { some: 'data' });
-            assert.deepEqual(promise.toString(), '[object Promise]');
-            assert.isFalse(yield promise);
+            const resolve = coEventEmitter.emit('my_event', { some: 'data' });
+            assert.deepEqual(typeof resolve, 'function');
+            assert.isFalse(yield resolve());
         });
 
         it('should return a promise that resolve to true if there is listener for the event', function* () {
             const listener = function* () {};
             coEventEmitter.on('my_event', listener);
 
-            const promise = coEventEmitter.emit('my_event', { some: 'data' });
-            assert.deepEqual(promise.toString(), '[object Promise]');
-            assert.isTrue(yield coEventEmitter.emit('my_event', { some: 'data' }));
+            const resolve = coEventEmitter.emit('my_event', { some: 'data' });
+            assert.deepEqual(typeof resolve, 'function');
+            assert.isTrue(yield resolve());
         });
 
-        it('should return a promise that reject with error thrown by listener', function* () {
+        it('should return resolve function that return a promise that reject with error thrown by listener', function* () {
             const listener = function* () {
                 throw new Error('Boom');
             };
             coEventEmitter.on('my_event', listener);
 
-            const promise = coEventEmitter.emit('my_event', { some: 'data' });
-            assert.deepEqual(promise.toString(), '[object Promise]');
+            const resolve = coEventEmitter.emit('my_event', { some: 'data' });
+            assert.equal(typeof resolve, 'function');
+            const promise = resolve();
+            assert.equal(promise.toString(), '[object Promise]');
             let error;
             try {
-                assert.isTrue(yield coEventEmitter.emit('my_event', { some: 'data' }));
+                yield promise;
             } catch (e) {
                 error = e;
             }
             assert.include(error.message, 'Boom');
         });
 
-        it('should return a promise that reject with first error thrown by listener', function* () {
+        it('should return a resolve function that reject with first error thrown by listener', function* () {
             const listener1 = function* () {
                 throw new Error('Boom1');
             };
@@ -54,11 +56,11 @@ describe('coEventEmitter', function () {
             };
             coEventEmitter.on('my_event', listener2);
 
-            const promise = coEventEmitter.emit('my_event', { some: 'data' });
-            assert.deepEqual(promise.toString(), '[object Promise]');
+            const resolve = coEventEmitter.emit('my_event', { some: 'data' });
+            assert.deepEqual(typeof resolve, 'function');
             let error;
             try {
-                assert.isTrue(yield coEventEmitter.emit('my_event', { some: 'data' }));
+                assert.isTrue(yield resolve());
             } catch (e) {
                 error = e;
             }
@@ -91,17 +93,47 @@ describe('coEventEmitter', function () {
             assert.deepEqual(listenerCall[0], ['some', 'data']);
         });
 
-        it('should remove resolved promise from events', function* () {
+        it('resolved promise should remove themself from events', function* () {
             const events = Object.getOwnPropertySymbols(coEventEmitter)[0];
-            let listenerCall = [];
-            coEventEmitter.on('my_event', function* (data) {
-                listenerCall.push(data);
-            });
-            const promise = coEventEmitter.emit('my_event', {some: 'data'});
+            coEventEmitter.on('my_event', function* (data) {});
+            coEventEmitter.emit('my_event', {some: 'data'});
             assert.equal(coEventEmitter[events].size, 1);
-            yield promise;
+            yield setImmediate;
+            yield setImmediate;
             assert.equal(coEventEmitter[events].size, 0);
-            assert.deepEqual(listenerCall[0], { some: 'data' });
+        });
+
+        it('resolved promise should remove themself when emit promise is resolved', function* () {
+            const events = Object.getOwnPropertySymbols(coEventEmitter)[0];
+            coEventEmitter.on('my_event', function* (data) {});
+            const resolve = coEventEmitter.emit('my_event', {some: 'data'});
+            assert.equal(coEventEmitter[events].size, 1);
+            yield resolve();
+            assert.equal(coEventEmitter[events].size, 0);
+        });
+
+        it('resolved promise should remove themself when resolveAll promise is resolved', function* () {
+            const events = Object.getOwnPropertySymbols(coEventEmitter)[0];
+            coEventEmitter.on('my_event', function* (data) {});
+            coEventEmitter.emit('my_event', {some: 'data'});
+            assert.equal(coEventEmitter[events].size, 1);
+            yield coEventEmitter.resolveAll();
+            assert.equal(coEventEmitter[events].size, 0);
+        });
+
+        it('rejected promise should stay in events unless specifically resolved', function* () {
+            const events = Object.getOwnPropertySymbols(coEventEmitter)[0];
+            coEventEmitter.on('my_event', function* (data) {
+                throw new Error('Boom');
+            });
+            const resolve = coEventEmitter.emit('my_event', {some: 'data'});
+            assert.equal(coEventEmitter[events].size, 1);
+            yield setImmediate;
+            assert.equal(coEventEmitter[events].size, 1);
+            try {
+                yield resolve();
+            } catch (e) {}
+            assert.equal(coEventEmitter[events].size, 0);
         });
     });
 
