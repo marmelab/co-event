@@ -19,9 +19,10 @@ export default class coEvent {
         const eventListeners = this[listeners][event] || [];
 
         if (eventListeners.length === 0) {
-            return () => new Promise(function (done) {
-                done(false);
-            });
+            return {
+                resolve: () => new Promise(done => done(false)),
+                executedListeners: eventListeners.length
+            };
         }
 
         const tasks = Promise.all(eventListeners.map(listener => co(executeListener(listener, parameters))))
@@ -32,12 +33,13 @@ export default class coEvent {
 
         this[events].add(tasks);
 
-        return () => {
-            return co(tasks)
+        return {
+            resolve: () => co(tasks)
             .catch(error => {
                 this[events].delete(tasks);
                 return new Promise((_, reject) => reject(error));
-            });
+            }),
+            executedListeners: eventListeners.length,
         };
     };
 

@@ -2,7 +2,7 @@
 
 import {assert} from 'chai';
 
-import CoEventEmitter from '../co-event';
+import CoEventEmitter from '../index';
 
 describe('coEventEmitter', function () {
     let coEventEmitter;
@@ -13,7 +13,7 @@ describe('coEventEmitter', function () {
 
     describe('emit', function () {
         it('should return a promise that resolve to false if there is no listener for event', function* () {
-            const resolve = coEventEmitter.emit('my_event', { some: 'data' });
+            const resolve = coEventEmitter.emit('my_event', { some: 'data' }).resolve;
             assert.deepEqual(typeof resolve, 'function');
             assert.isFalse(yield resolve());
         });
@@ -22,7 +22,7 @@ describe('coEventEmitter', function () {
             const listener = function* () {};
             coEventEmitter.on('my_event', listener);
 
-            const resolve = coEventEmitter.emit('my_event', { some: 'data' });
+            const resolve = coEventEmitter.emit('my_event', { some: 'data' }).resolve;
             assert.deepEqual(typeof resolve, 'function');
             assert.isTrue(yield resolve());
         });
@@ -33,7 +33,7 @@ describe('coEventEmitter', function () {
             };
             coEventEmitter.on('my_event', listener);
 
-            const resolve = coEventEmitter.emit('my_event', { some: 'data' });
+            const resolve = coEventEmitter.emit('my_event', { some: 'data' }).resolve;
             assert.equal(typeof resolve, 'function');
             const promise = resolve();
             assert.equal(promise.toString(), '[object Promise]');
@@ -56,7 +56,7 @@ describe('coEventEmitter', function () {
             };
             coEventEmitter.on('my_event', listener2);
 
-            const resolve = coEventEmitter.emit('my_event', { some: 'data' });
+            const resolve = coEventEmitter.emit('my_event', { some: 'data' }).resolve;
             assert.deepEqual(typeof resolve, 'function');
             let error;
             try {
@@ -73,7 +73,7 @@ describe('coEventEmitter', function () {
             coEventEmitter.on('my_event', function* (data) {
                 listenerCall.push(data);
             });
-            coEventEmitter.emit('my_event', {some: 'data'});
+            coEventEmitter.emit('my_event', {some: 'data'}).resolve;
 
             assert.deepEqual(listenerCall, []);
             yield setImmediate;
@@ -106,7 +106,7 @@ describe('coEventEmitter', function () {
         it('resolved promise should remove themself when emit promise is resolved', function* () {
             const events = Object.getOwnPropertySymbols(coEventEmitter)[0];
             coEventEmitter.on('my_event', function* (data) {});
-            const resolve = coEventEmitter.emit('my_event', {some: 'data'});
+            const resolve = coEventEmitter.emit('my_event', {some: 'data'}).resolve;
             assert.equal(coEventEmitter[events].size, 1);
             yield resolve();
             assert.equal(coEventEmitter[events].size, 0);
@@ -126,7 +126,7 @@ describe('coEventEmitter', function () {
             coEventEmitter.on('my_event', function* (data) {
                 throw new Error('Boom');
             });
-            const resolve = coEventEmitter.emit('my_event', {some: 'data'});
+            const resolve = coEventEmitter.emit('my_event', {some: 'data'}).resolve;
             assert.equal(coEventEmitter[events].size, 1);
             yield setImmediate;
             assert.equal(coEventEmitter[events].size, 1);
@@ -135,6 +135,7 @@ describe('coEventEmitter', function () {
             } catch (e) {}
             assert.equal(coEventEmitter[events].size, 0);
         });
+
     });
 
     describe('resolveAll', function () {
