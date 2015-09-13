@@ -39,7 +39,7 @@ export default class coEvent {
                 this[events].delete(tasks);
                 return new Promise((_, reject) => reject(error));
             }),
-            executedListeners: eventListeners.length,
+            executedListeners: eventListeners.length
         };
     };
 
@@ -67,7 +67,7 @@ export default class coEvent {
         this.emit('newListener', listener);
 
         if (this[listeners][event].length > this.maxListeners) {
-            console.warn('possible EventEmitter memory leak detected. ${this[listeners][event].length} listeners added. Use emitter.setMaxListeners() to increase limit.');
+            console.warn(`possible EventEmitter memory leak detected. ${this[listeners][event].length} listeners added. Use emitter.setMaxListeners() to increase limit.`);
         }
 
         return this;
