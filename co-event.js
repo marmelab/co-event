@@ -133,7 +133,7 @@ export default class coEvent {
         return this[listeners][event];
     };
 
-    static listenerCount(emitter, event) {
-        return emitter.listeners(event).length;
+    listenerCount(event) {
+        return this.listeners(event).length;
     }
 };

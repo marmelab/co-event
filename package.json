@@ -1,13 +1,13 @@
 {
   "name": "koa-event",
-  "version": "0.0.1",
-  "description": "",
+  "version": "0.1.0",
+  "description": "An eventEmitter that accept generator and return promise to control the event flow",
   "main": "lib/index.js",
   "scripts": {
     "test": "node_modules/mocha/bin/mocha test/*.js test/**/*.js"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "ThieryMichel <thiery@marmelab.com>",
+  "license": "MIT",
   "dependencies": {
     "babel-runtime": "^5.8.20",
     "co": "^4.4.0"
