@@ -10,8 +10,6 @@ The promise will also fail if one listener triggered an error.
 
 emit  will return an object with a resolve method returning a promise that allow to know when the listener triggered by the event has been executed.
 
-on add a listener
-
 ## Class: CoEvent
 An Event emitter implementation inspired from node EventEmitter returning promise and accepting generator.
 
