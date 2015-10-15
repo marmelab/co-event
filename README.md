@@ -1,3 +1,4 @@
+# CO-EVENT
 Event emitter returning promise and accepting generator.
 
 This eventEmitter allow to use generator as listener.
@@ -26,9 +27,11 @@ calls passing the same combination of `event` and `listener` will result in the
 `listener` being added multiple times.
 The listener can be a function or a generator.
 
-    server.on('connection', function (stream) {
-      console.log('someone connected!');
-    });
+```js
+server.on('connection', function (stream) {
+  console.log('someone connected!');
+});
+```
 
 Returns emitter, so calls can be chained.
 
@@ -37,11 +40,11 @@ Returns emitter, so calls can be chained.
 Adds a **one time** listener for the event. This listener is
 invoked only the next time the event is fired, after which
 it is removed.
-
-    server.once('connection', function (stream) {
-      console.log('Ah, we have our first user!');
-    });
-
+```js
+server.once('connection', function (stream) {
+  console.log('Ah, we have our first user!');
+});
+```
 Returns emitter, so calls can be chained.
 
 ### emitter.removeListener(event, listener)
@@ -49,12 +52,14 @@ Returns emitter, so calls can be chained.
 Removes a listener from the listener array for the specified event.
 **Caution**: changes array indices in the listener array behind the listener.
 
-    var callback = function(stream) {
-      console.log('someone connected!');
-    };
-    server.on('connection', callback);
-    // ...
-    server.removeListener('connection', callback);
+```js
+var callback = function(stream) {
+  console.log('someone connected!');
+};
+server.on('connection', callback);
+// ...
+server.removeListener('connection', callback);
+```
 
 `removeListener` will remove, at most, one instance of a listener from the
 listener array. If any single listener has been added multiple times to the
@@ -87,13 +92,13 @@ Returns the current max listener value for the emitter which is either set by
 
 This can be useful to increment/decrement max listeners to avoid the warning
 while not being irresponsible and setting a too big number.
-
-    emitter.setMaxListeners(emitter.getMaxListeners() + 1);
-    emitter.once('event', function () {
-      // do stuff
-      emitter.setMaxListeners(Math.max(emitter.getMaxListeners() - 1, 0));
-    });
-
+```js
+emitter.setMaxListeners(emitter.getMaxListeners() + 1);
+emitter.once('event', function () {
+  // do stuff
+  emitter.setMaxListeners(Math.max(emitter.getMaxListeners() - 1, 0));
+});
+```
 ### EventEmitter.defaultMaxListeners
 
 `emitter.setMaxListeners(n)` sets the maximum on a per-instance basis.
@@ -107,12 +112,12 @@ Note that `emitter.setMaxListeners(n)` still has precedence over
 ### emitter.listeners(event)
 
 Returns a copy of the array of listeners for the specified event.
-
-    server.on('connection', function (stream) {
-      console.log('someone connected!');
-    });
-    console.log(util.inspect(server.listeners('connection'))); // [ [Function] ]
-
+```js
+server.on('connection', function (stream) {
+  console.log('someone connected!');
+});
+console.log(util.inspect(server.listeners('connection'))); // [ [Function] ]
+```
 
 ### emitter.emit(event[, arg1][, arg2][, ...])
 
@@ -151,15 +156,16 @@ triggered, the listener has been removed from the array of listeners for the
 
 Inheriting from `CoEvent` is no different from inheriting from any other
 constructor function. For example:
+```js
+'use strict';
+const util = require('util');
+const EventEmitter = require('events').EventEmitter;
 
-    'use strict';
-    const util = require('util');
-    const EventEmitter = require('events').EventEmitter;
+function MyEventEmitter() {
+  // Initialize necessary properties from `EventEmitter` in this instance
+  EventEmitter.call(this);
+}
 
-    function MyEventEmitter() {
-      // Initialize necessary properties from `EventEmitter` in this instance
-      EventEmitter.call(this);
-    }
-
-    // Inherit functions from `EventEmitter`'s prototype
-    util.inherits(MyEventEmitter, EventEmitter);
+// Inherit functions from `EventEmitter`'s prototype
+util.inherits(MyEventEmitter, EventEmitter);
+```
